@@ -1,4 +1,4 @@
-module imgur
+module imgurGen
 
 go 1.18
 
