@@ -15,7 +15,7 @@ type userConfig struct {
 	Connections int
 }
 
-func parseArgs() (cfg userConfig, exit bool) {
+func parseArgs() (cfg userConfig) {
 
 	var help, shouldLog bool
 
@@ -31,8 +31,7 @@ func parseArgs() (cfg userConfig, exit bool) {
 	flag.Parse()
 	if help {
 		flag.Usage()
-		exit = true
-		return
+		os.Exit(0)
 	}
 
 	if shouldLog {
