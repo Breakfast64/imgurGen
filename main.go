@@ -77,10 +77,7 @@ func fetch(
 
 func main() {
 
-	cfg, exit := parseArgs()
-	if exit {
-		return
-	}
+	cfg := parseArgs()
 
 	urlChan := make(chan string, 200)
 	errChan := make(chan string)
