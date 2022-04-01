@@ -55,19 +55,21 @@ func fetch(
 		resp, err := client.Do(req)
 		panicOnErr(err)
 		_ = resp.Body.Close()
-		if resp.StatusCode == 200 {
+		switch resp.StatusCode {
+		case 200:
 			urlChan <- resp.Request.URL.String()
 			atomic.AddUint32(&foundOk, 1)
-		} else {
+		case 409:
+			str := strings.Builder{}
+			_, _ = fmt.Fprintf(&str, "\rTimed out for sending too many requests")
+			clearRest(&str)
+			errChan <- str.String()
+			return
+
+		default:
 			atomic.AddUint32(&foundBad, 1)
 			if config.Logger != nil {
 				config.Logger.Printf("Image not found at %v. Status Code: %d\n", resp.Request.URL, resp.StatusCode)
-			}
-			if resp.StatusCode == 429 {
-				str := strings.Builder{}
-				_, _ = fmt.Fprintf(&str, "\rTimed out for sending too many requests")
-				clearRest(&str)
-				errChan <- str.String()
 			}
 		}
 	}
