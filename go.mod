@@ -1,4 +1,4 @@
-module imgurGen
+module github.com/Hexin64/imgurGen
 
 go 1.18
 
