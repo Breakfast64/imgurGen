@@ -2,4 +2,4 @@ module github.com/Hexin64/imgurGen
 
 go 1.18
 
-require github.com/spf13/pflag v1.0.5 // indirect
+require github.com/spf13/pflag v1.0.5
