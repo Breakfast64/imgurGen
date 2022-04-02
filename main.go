@@ -25,7 +25,7 @@ func panicOnErr(err error) {
 	}
 }
 
-var alphaNum []uint8 = func() (out []uint8) {
+var alphaNum = func() (out []uint8) {
 	charRange := func(from uint8, to uint8) {
 		for ch := from; ch <= to; ch++ {
 			out = append(out, ch)
