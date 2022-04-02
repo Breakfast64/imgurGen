@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net/http"
+	"net"
 	"os"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unsafe"
+
+	"github.com/valyala/fasthttp"
 )
 
 func clearRest(writer io.Writer) {
@@ -21,8 +24,6 @@ func panicOnErr(err error) {
 		panic(err)
 	}
 }
-
-const imgurUrl = "https://i.imgur.com"
 
 var alphaNum []uint8 = func() (out []uint8) {
 	charRange := func(from uint8, to uint8) {
@@ -41,23 +42,36 @@ var foundBad uint32
 
 func fetch(
 	config userConfig,
-	client *http.Client,
 	urlChan chan<- string,
 	errChan chan<- string,
 ) {
 	gen := createGen(config)
-	req, err := http.NewRequest("HEAD", imgurUrl, nil)
-	panicOnErr(err)
+	var (
+		req    fasthttp.Request
+		resp   fasthttp.Response
+		url    fasthttp.URI
+		client fasthttp.Client
+		err    error
+	)
+
+	url.SetScheme("https")
+	url.SetHost("i.imgur.com")
+	client.Dial = func(addr string) (net.Conn, error) {
+		return fasthttp.DialTimeout(addr, time.Minute)
+	}
 
 	for {
 		path := gen.next()
-		req.URL.Path = path
-		resp, err := client.Do(req)
+		strPath := *(*string)(unsafe.Pointer(&path))
+		url.SetPath(strPath)
+
 		panicOnErr(err)
-		_ = resp.Body.Close()
-		switch resp.StatusCode {
+		req.SetURI(&url)
+		req.Header.SetMethod(fasthttp.MethodHead)
+		err = client.Do(&req, &resp)
+		switch code := resp.StatusCode(); code {
 		case 200:
-			urlChan <- resp.Request.URL.String()
+			urlChan <- url.String()
 			atomic.AddUint32(&foundOk, 1)
 		case 409:
 			str := strings.Builder{}
@@ -69,7 +83,7 @@ func fetch(
 		default:
 			atomic.AddUint32(&foundBad, 1)
 			if config.Logger != nil {
-				config.Logger.Printf("Image not found at %v. Status Code: %d\n", resp.Request.URL, resp.StatusCode)
+				config.Logger.Printf("Image not found at %v. Status Code: %d\n", url.String(), code)
 			}
 		}
 	}
@@ -82,14 +96,8 @@ func main() {
 	urlChan := make(chan string, 200)
 	errChan := make(chan string)
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
 	for i := 0; i < cfg.Connections; i++ {
-		go fetch(cfg, client, urlChan, errChan)
+		go fetch(cfg, urlChan, errChan)
 	}
 
 	out := bufio.NewWriter(os.Stdout)

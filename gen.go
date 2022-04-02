@@ -1,23 +1,18 @@
 package main
 
 import (
-	"math/rand"
-	"time"
+	"github.com/valyala/fastrand"
 )
 
 type gen struct {
-	rng    *rand.Rand
+	rng    fastrand.RNG
 	buffer []byte
 	cfg    userConfig
 }
 
 func createGen(config userConfig) gen {
+
 	g := gen{
-		rng: rand.New(
-			rand.NewSource(
-				time.Now().UnixNano(),
-			),
-		),
 		cfg:    config,
 		buffer: make([]byte, config.Length+1+len(config.Extension)),
 	}
@@ -25,12 +20,13 @@ func createGen(config userConfig) gen {
 	return g
 }
 
-func (g *gen) next() string {
+func (g *gen) next() []byte {
 	path := g.buffer[1:]
 	for i := 0; i < g.cfg.Length; i++ {
-		path[i] = alphaNum[g.rng.Intn(len(alphaNum))]
+		pathIdx := int(g.rng.Uint32()) % len(alphaNum)
+		path[i] = alphaNum[pathIdx]
 	}
 	ext := path[g.cfg.Length:]
 	copy(ext, g.cfg.Extension)
-	return string(g.buffer)
+	return g.buffer
 }
